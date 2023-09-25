@@ -44,60 +44,54 @@ app.post("/createUser", async (req, res) => {
   const userId = "UID" + "" + Math.floor((Math.random() * 100000000000000) + 1);
   var schema = new passwordValidator();
   schema
-.is().min(8)                                   
-.is().max(100)
-.has().uppercase()                              
-.has().lowercase()                              
-.has().digits(2)                               
-.has().not().spaces() 
- const passwordValidate =  schema.validate(req.body.password, { details: true })
-if(passwordValidate == []){
-  const userName = req.body.userName;
-  const password = bcrypt.hashSync(req.body.password, parseInt(process.env.SALTROUNDS));
-  const authToken = jwt.sign({ id: userId }, process.env.JWT_SECRET);
-  db1.getConnection(async (err, connection) => {
-    if (err) throw (err)
-    const sqlSearch = "SELECT * FROM users WHERE userName = ?"
-    const search_query = mysql.format(sqlSearch, [userName])
-    const sqlInsert = "INSERT INTO users VALUES (?,?,?,?)"
-    const insert_query = mysql.format(sqlInsert, [userId, userName, password, authToken])
-    // ? will be replaced by values
-    // ?? will be replaced by string
-    await connection.query(search_query, async (err, result) => {
-      if (err) {
-        sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
-        throw (err)
-      }
-      if (result.length != 0) {
-        connection.release()
-        sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.USER_EXISTS);
-      }
-      else {
-        await connection.query(insert_query, (err, result) => {
+    .is().min(8)
+    .is().max(100)
+    .has().uppercase()
+    .has().lowercase()
+    .has().digits(2)
+    .has().not().spaces()
+  const passwordValidate = schema.validate(req.body.password, { details: true })
+  if (passwordValidate == []) {
+    const userName = req.body.userName;
+    const password = bcrypt.hashSync(req.body.password, parseInt(process.env.SALTROUNDS));
+    const authToken = jwt.sign({ id: userId }, process.env.JWT_SECRET);
+    db1.getConnection(async (err, connection) => {
+      if (err) throw (err)
+      const sqlSearch = "SELECT * FROM users WHERE userName = ?"
+      const search_query = mysql.format(sqlSearch, [userName])
+      const sqlInsert = "INSERT INTO users VALUES (?,?,?,?)"
+      const insert_query = mysql.format(sqlInsert, [userId, userName, password, authToken])
+      await connection.query(search_query, async (err, result) => {
+        if (err) {
+          sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
+          throw (err)
+        }
+        if (result.length != 0) {
           connection.release()
-          if (err) {
-            //throw (err)
-            console.log(error)
-            sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
-          }
-          sendResponse(200, res, CONFIG.customMessage.USER_CREATED, authToken);
+          sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.USER_EXISTS);
+        }
+        else {
+          await connection.query(insert_query, (err, result) => {
+            connection.release()
+            if (err) {
+              sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
+            }
+            sendResponse(200, res, CONFIG.customMessage.USER_CREATED, authToken);
 
-        })
-      }
+          })
+        }
+      })
     })
-  })
-}
-else{
-  sendResponse(401, res, CONFIG.STATUS_MSG.ERROR.INVALID_PASSWORD,passwordValidate);
-}
-  
+  }
+  else {
+    sendResponse(401, res, CONFIG.STATUS_MSG.ERROR.INVALID_PASSWORD, passwordValidate);
+  }
+
 })
 
 app.post("/login", (req, res) => {
   const userName = req.body.userName
   const password = req.body.password
-
-  
   db1.getConnection(async (err, connection) => {
     if (err) throw (err)
     const sqlSearch = "SELECT * FROM users where userName = ?"
@@ -136,74 +130,35 @@ app.get("/getUserLists", async (req, res) => {
   try {
     const token = req.header('Authorization').replace('Bearer ', '');
     const decode = jwt.verify(token, process.env.JWT_SECRET);
-    if(decode){
+    if (decode) {
       db1.getConnection(async (err, connection) => {
         const sqlSearch = "SELECT * FROM users"
         const search_query = mysql.format(sqlSearch)
         await connection.query(search_query, async (err, result) => {
           connection.release()
-  
-          if (err) throw (err)
+          if (err) {
+            sendResponse(401, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
+          }
           sendResponse(200, res, CONFIG.customMessage.SUCCESS, result, "", 1);
         })
-  
+
       })
-    } 
+    }
 
   } catch (e) {
     console.log(e)
-    sendResponse(401, res, CONFIG.STATUS_MSG.ERROR.INVALID_TOKEN);
+    sendResponse(401, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
   }
 });
 
 app.put("/updatePassword", async (req, res) => {
-try{
-  const userName = req.body.userName
-  const password = bcrypt.hashSync(req.body.password, parseInt(process.env.SALTROUNDS));
-  const token = req.header('Authorization').replace('Bearer ', '');
-  const decode = jwt.verify(token, process.env.JWT_SECRET);
-
-  if(decode){
-    db1.getConnection(async (err, connection) => {
-      if (err) throw (err)
-      const sqlSearch = "SELECT * FROM users WHERE userName = ?"
-      const search_query = mysql.format(sqlSearch, [userName])
-      await connection.query(search_query, async (err, result) => {
-        if (err) {
-          sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
-          throw (err)
-        }
-        if (result.length == 0) {
-          connection.release()
-          sendResponse(404, res, CONFIG.STATUS_MSG.ERROR.USER_DOESNT_EXISTS);
-        }
-        else {
-          const sqlupdate = "UPDATE users SET password = ? WHERE password = ?"
-          const update_query = mysql.format(sqlupdate, [password, result[0].password])
-          db1.query(update_query, function (err, result) {
-            if (err) throw err;
-            sendResponse(200, res, CONFIG.customMessage.PASSWORD_UPDATED);
-          });
-  
-  
-        }
-      })
-  
-    })
-}
-}
-catch(e){
-console.log(e);
-  sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
-}
-})
-
-app.delete("/deleteUser", async (req, res) => {
-  try{
+  try {
     const userName = req.body.userName
+    const password = bcrypt.hashSync(req.body.password, parseInt(process.env.SALTROUNDS));
     const token = req.header('Authorization').replace('Bearer ', '');
     const decode = jwt.verify(token, process.env.JWT_SECRET);
-    if(decode){
+
+    if (decode) {
       db1.getConnection(async (err, connection) => {
         if (err) throw (err)
         const sqlSearch = "SELECT * FROM users WHERE userName = ?"
@@ -211,7 +166,44 @@ app.delete("/deleteUser", async (req, res) => {
         await connection.query(search_query, async (err, result) => {
           if (err) {
             sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
-            throw (err)
+          }
+          if (result.length == 0) {
+            connection.release()
+            sendResponse(404, res, CONFIG.STATUS_MSG.ERROR.USER_DOESNT_EXISTS);
+          }
+          else {
+            const sqlupdate = "UPDATE users SET password = ? WHERE password = ?"
+            const update_query = mysql.format(sqlupdate, [password, result[0].password])
+            db1.query(update_query, function (err, result) {
+              if (err) {
+                sendResponse(401, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
+              }
+              sendResponse(200, res, CONFIG.customMessage.PASSWORD_UPDATED);
+            });
+          }
+        })
+      })
+    }
+  }
+  catch (e) {
+    console.log(e);
+    sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
+  }
+})
+
+app.delete("/deleteUser", async (req, res) => {
+  try {
+    const userName = req.body.userName
+    const token = req.header('Authorization').replace('Bearer ', '');
+    const decode = jwt.verify(token, process.env.JWT_SECRET);
+    if (decode) {
+      db1.getConnection(async (err, connection) => {
+        if (err) throw (err)
+        const sqlSearch = "SELECT * FROM users WHERE userName = ?"
+        const search_query = mysql.format(sqlSearch, [userName])
+        await connection.query(search_query, async (err, result) => {
+          if (err) {
+            sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
           }
           if (result.length == 0) {
             connection.release()
@@ -221,22 +213,22 @@ app.delete("/deleteUser", async (req, res) => {
             const sqldelete = "DELETE FROM users WHERE userName = ?";
             const delete_query = mysql.format(sqldelete, [userName])
             db1.query(delete_query, function (err, result) {
-              if (err) throw err;
+              if (err) {
+                sendResponse(401, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
+              }
               sendResponse(200, res, CONFIG.customMessage.USER_DELETED);
             });
-    
-    
           }
         })
-    
+
       })
     }
- }
-  catch(e){
-  console.log(e);
+  }
+  catch (e) {
+    console.log(e);
     sendResponse(409, res, CONFIG.STATUS_MSG.ERROR.SOME_ERROR_FOND);
   }
-  })
+})
 
 
 
