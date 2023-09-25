@@ -1,6 +1,6 @@
 global.sendResponse = (statusCode, res, message,result,sendArray,type) => {
     let success = false;    
-    if (statusCode == 200) {
+    if (statusCode == 200 || statusCode == 401 ) {
         success = true;
         if (sendArray && result == "") {
             message.data = [];

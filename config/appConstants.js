@@ -6,12 +6,12 @@ var STATUS_MSG = {
             data : 'NOT_FOUND'
         },
         USER_EXISTS: {
-            statusCode:409,
+            statusCode:400,
             customMessage : 'User Already Exists',
             data : 'NOT_FOUND'
         },
         USER_DOESNT_EXISTS: {
-            statusCode:409,
+            statusCode:404,
             customMessage : 'User does not Exists',
             data : 'NOT_FOUND'
         },
@@ -24,6 +24,12 @@ var STATUS_MSG = {
             statusCode:401,
             customMessage : 'Invalid Token ',
             data : 'INVALID_TOKEN'
+            
+        },
+        INVALID_PASSWORD : {
+            statusCode:401,
+            customMessage : 'Invalid Password ',
+            data : {}
             
         },
     }
